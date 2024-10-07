@@ -8,215 +8,226 @@
 ## Data is sent in as an array of arrays
 ## Example Input (raw_data reflects the data from the first 0.5s frame)
 ## assuming 0.1s sends one set of data
+
+###################################################################################################
+# Updated start of move detection
+# For collection of training data for MLP model training
+# 3 blunos will be used to detect motion, as mentioned above
+# However, feature extraction will not be done here in Bluno anymore compared to earlier version of startOfMove
+# Will be done in Ultra96 after external comms recieves data, and processed before calling MLP script
+###################################################################################################
+
 import numpy as np
 from scipy.stats import skew, kurtosis
+import queue
+import pandas as pd
 
-threshold = 0.2
+collate_queue = queue.Queue() # used for collating data from the different bluno threads
 
-raw_data = [[0.765, 0.734, 0.752, 6.23, 6.54, 6.76,0.323, 0.423, 0.311, 4.54, 4.32, 4.47,0.132, 0.323, 0.412, 4.12, 4.22, 4.65],
-            [0.765, 0.734, 0.752, 6.23, 6.54, 6.76,0.323, 0.423, 0.311, 4.54, 4.32, 4.47,0.132, 0.323, 0.412, 4.12, 4.22, 4.65],
-            [0.765, 0.734, 0.752, 6.23, 6.54, 6.76,0.323, 0.423, 0.311, 4.54, 4.32, 4.47,0.132, 0.323, 0.412, 4.12, 4.22, 4.65],
-            [0.765, 0.734, 0.752, 6.23, 6.54, 6.76,0.323, 0.423, 0.311, 4.54, 4.32, 4.47,0.132, 0.323, 0.412, 4.12, 4.22, 4.65],
-            [0.765, 0.734, 0.752, 6.23, 6.54, 6.76,0.323, 0.423, 0.311, 4.54, 4.32, 4.47,0.132, 0.323, 0.412, 4.12, 4.22, 4.65]
-            ]
-
-## Example Input (raw_data reflects the data from the second 0.5s frame)
-## assuming 0.1s sends one set of data
-raw_data_2 = [[10.765, 0.734, 0.752, 6.23, 6.54, 6.76,0.323, 0.423, 0.311, 4.54, 4.32, 4.47,0.132, 0.323, 0.412, 4.12, 4.22, 4.65],
-            [10.765, 0.734, 0.752, 6.23, 6.54, 6.76,0.323, 0.423, 0.311, 4.54, 4.32, 4.47,0.132, 0.323, 0.412, 4.12, 4.22, 4.65],
-            [10.765, 0.734, 0.752, 6.23, 6.54, 6.76,0.323, 0.423, 0.311, 4.54, 4.32, 4.47,0.132, 0.323, 0.412, 4.12, 4.22, 4.65],
-            [10.765, 0.734, 0.752, 6.23, 6.54, 6.76,0.323, 0.423, 0.311, 4.54, 4.32, 4.47,0.132, 0.323, 0.412, 4.12, 4.22, 4.65],
-            [10.765, 0.734, 0.752, 6.23, 6.54, 6.76,0.323, 0.423, 0.311, 4.54, 4.32, 4.47,0.132, 0.323, 0.412, 4.12, 4.22, 4.65]
-            ]
-
-## assuming 0.1s sends one set of data (third window that comes after)
-raw_data_3 = [[0.765, 0.734, 0.752, 6.23, 6.54, 6.76,0.323, 0.423, 0.311, 4.54, 4.32, 4.47,0.132, 0.323, 0.412, 4.12, 4.22, 4.65],
-            [0.765, 0.734, 0.752, 6.23, 6.54, 6.76,0.323, 0.423, 0.311, 4.54, 4.32, 4.47,0.132, 0.323, 0.412, 4.12, 4.22, 4.65],
-            [0.765, 0.734, 0.752, 6.23, 6.54, 6.76,0.323, 0.423, 0.311, 4.54, 4.32, 4.47,0.132, 0.323, 0.412, 4.12, 4.22, 4.65],
-            [0.765, 0.734, 0.752, 6.23, 6.54, 6.76,0.323, 0.423, 0.311, 4.54, 4.32, 4.47,0.132, 0.323, 0.412, 4.12, 4.22, 4.65],
-            [0.765, 0.734, 0.752, 6.23, 6.54, 6.76,0.323, 0.423, 0.311, 4.54, 4.32, 4.47,0.132, 0.323, 0.412, 4.12, 4.22, 4.65]
-            ]
-
-class halfSecondWindow:
-    def __init__(self) -> None:
-        # Bluno 1
-        self.acc_x_1 = []
-        self.acc_y_1 = []
-        self.acc_z_1 = []
-        self.gry_x_1 = []
-        self.gry_y_1 = []
-        self.gry_z_1 = []
-        # Bluno 2
-        self.acc_x_2 = []
-        self.acc_y_2 = []
-        self.acc_z_2 = []
-        self.gry_x_2 = []
-        self.gry_y_2 = []
-        self.gry_z_2 = []
-        # Bluno 3
-        self.acc_x_3 = []
-        self.acc_y_3 = []
-        self.acc_z_3 = []
-        self.gry_x_3 = []
-        self.gry_y_3 = []
-        self.gry_z_3 = []
-
-    def read_values(self, raw_data):
-        for i in raw_data:
-            self.acc_x_1.append(abs(i[0]))
-            self.acc_y_1.append(abs(i[1]))
-            self.acc_z_1.append(abs(i[2]))
-            self.gry_x_1.append(abs(i[3]))
-            self.gry_y_1.append(abs(i[4]))
-            self.gry_z_1.append(abs(i[5]))
-            self.acc_x_2.append(abs(i[6]))
-            self.acc_y_2.append(abs(i[7]))
-            self.acc_z_2.append(abs(i[8]))
-            self.gry_x_2.append(abs(i[9]))
-            self.gry_y_2.append(abs(i[10]))
-            self.gry_z_2.append(abs(i[11]))
-            self.acc_x_3.append(abs(i[12]))
-            self.acc_y_3.append(abs(i[13]))
-            self.acc_z_3.append(abs(i[14]))
-            self.gry_x_3.append(abs(i[15]))
-            self.gry_y_3.append(abs(i[16]))
-            self.gry_z_3.append(abs(i[17]))
-
-    def merge_values(self, first,second):
-        
-        for i in range(len(first.acc_x_1)):
-            self.acc_x_1.append(first.acc_x_1[i])
-            self.acc_x_1.append(second.acc_x_1[i])
-            self.acc_y_1.append(first.acc_y_1[i])
-            self.acc_y_1.append(second.acc_y_1[i])
-            self.acc_z_1.append(first.acc_z_1[i])
-            self.acc_z_1.append(second.acc_z_1[i])
-
-            self.gry_x_1.append(first.gry_x_1[i])
-            self.gry_x_1.append(second.gry_x_1[i])
-            self.gry_y_1.append(first.gry_y_1[i])
-            self.gry_y_1.append(second.gry_y_1[i])
-            self.gry_z_1.append(first.gry_z_1[i])
-            self.gry_z_1.append(second.gry_z_1[i])
-
-            self.acc_x_2.append(first.acc_x_2[i])
-            self.acc_x_2.append(second.acc_x_2[i])
-            self.acc_y_2.append(first.acc_y_2[i])
-            self.acc_y_2.append(second.acc_y_2[i])
-            self.acc_z_2.append(first.acc_z_2[i])
-            self.acc_z_2.append(second.acc_z_2[i])
-
-            self.gry_x_2.append(first.gry_x_2[i])
-            self.gry_x_2.append(second.gry_x_2[i])
-            self.gry_y_2.append(first.gry_y_2[i])
-            self.gry_y_2.append(second.gry_y_2[i])
-            self.gry_z_2.append(first.gry_z_2[i])
-            self.gry_z_2.append(second.gry_z_2[i])
-
-            self.acc_x_3.append(first.acc_x_3[i])
-            self.acc_x_3.append(second.acc_x_3[i])
-            self.acc_y_3.append(first.acc_y_3[i])
-            self.acc_y_3.append(second.acc_y_3[i])
-            self.acc_z_3.append(first.acc_z_3[i])
-            self.acc_z_3.append(second.acc_z_3[i])
-
-            self.gry_x_3.append(first.gry_x_3[i])
-            self.gry_x_3.append(second.gry_x_3[i])
-            self.gry_y_3.append(first.gry_y_3[i])
-            self.gry_y_3.append(second.gry_y_3[i])
-            self.gry_z_3.append(first.gry_z_3[i])
-            self.gry_z_3.append(second.gry_z_3[i])
-
-    def calculate_statistics(self):
-        features = [
-            'acc_x_1', 'acc_y_1', 'acc_z_1', 'gry_x_1', 'gry_y_1', 'gry_z_1',
-            'acc_x_2', 'acc_y_2', 'acc_z_2', 'gry_x_2', 'gry_y_2', 'gry_z_2',
-            'acc_x_3', 'acc_y_3', 'acc_z_3', 'gry_x_3', 'gry_y_3', 'gry_z_3'
-        ]
-
-        stats = []
-
-        # Loop through each feature
-        for feature in features:
-            data = np.array(getattr(self, feature))  # Get the list of data using getattr
-            ##print("Current Feature: " + feature)
-            ##print(data)
-            # Calculate statistics
-            mean = np.mean(data)
-            max_val = np.max(data)
-            min_val = np.min(data)
-            std = np.std(data)
-            var = np.var(data)
-            rms = np.sqrt(np.mean(np.square(data)))
-            skewness = skew(data)
-            kurt = kurtosis(data)
+def consumerThread():
+    isFullCycleComplete = False # do not perform if one full iteration is complete
+    isCollate = False # flag to determine if data should be collated
+    # flags to determine if bluno has collected max samples for action
+    isB1Complete = False
+    isB2Complete = False
+    isB3Complete = False
+    # number of samples to collect after start of move has been detected
+    max_iter = 80
+    # data format: [time.time(), name, Ax, Ay, Az, Gx, Gy, Gz, seq_num]
+    # arrays to store 80 samples
+    bluno_1_collation_arr = []
+    bluno_2_collation_arr = []
+    bluno_3_collation_arr = []
+    # arrays to store 5 samples
+    bluno_1_prev_compare_arr = []
+    bluno_2_prev_compare_arr = []
+    bluno_3_prev_compare_arr = []
+    bluno_1_curr_compare_arr = []
+    bluno_2_curr_compare_arr = []
+    bluno_3_curr_compare_arr = []
+    while(not isFullCycleComplete): # while one full collation + output iteration is not complete
+        if not isCollate:
+            data = collate_queue.get()
+            match data[1]:
+                case "BLUNO_1":
+                    if len(bluno_1_prev_compare_arr) < 5:
+                        bluno_1_prev_compare_arr.append(data)
+                    elif len(bluno_1_curr_compare_arr) < 5:
+                        bluno_1_curr_compare_arr.append(data)
+                    else:
+                        # compare data
+                        if isAboveThreshold(bluno_1_prev_compare_arr, bluno_1_curr_compare_arr):
+                            isCollate = True # remember to clear the arrays !!!
+                        else:
+                            bluno_1_prev_compare_arr = bluno_1_prev_compare_arr[1:5]
+                            bluno_1_prev_compare_arr.append(bluno_1_curr_compare_arr[0])
+                            bluno_1_curr_compare_arr = bluno_1_curr_compare_arr[1:5]
+                case "BLUNO_2":
+                    if len(bluno_2_prev_compare_arr) < 5:
+                        bluno_2_prev_compare_arr.append(data)
+                    elif len(bluno_2_curr_compare_arr) < 5:
+                        bluno_2_curr_compare_arr.append(data)
+                    else:
+                        # compare data
+                        if isAboveThreshold(bluno_2_prev_compare_arr, bluno_2_curr_compare_arr):
+                            isCollate = True # remember to clear the arrays !!!
+                        else:
+                            bluno_2_prev_compare_arr = bluno_2_prev_compare_arr[1:5]
+                            bluno_2_prev_compare_arr.append(bluno_2_curr_compare_arr[0])
+                            bluno_2_curr_compare_arr = bluno_2_curr_compare_arr[1:5]
+                case "BLUNO_3":
+                    if len(bluno_3_prev_compare_arr) < 5:
+                        bluno_3_prev_compare_arr.append(data)
+                    elif len(bluno_3_curr_compare_arr) < 5:
+                        bluno_3_curr_compare_arr.append(data)
+                    else:
+                        # compare data 
+                        if isAboveThreshold(bluno_3_prev_compare_arr, bluno_3_curr_compare_arr):
+                            isCollate = True # remember to clear the arrays !!!
+                        else:
+                            bluno_3_prev_compare_arr = bluno_3_prev_compare_arr[1:5]
+                            bluno_3_prev_compare_arr.append(bluno_3_curr_compare_arr[0])
+                            bluno_3_curr_compare_arr = bluno_3_curr_compare_arr[1:5]
+        else: # put all data into the collation queue
+            bluno_1_collation_arr  = bluno_1_curr_compare_arr # initialise array with 5 values
+            bluno_2_collation_arr  = bluno_2_curr_compare_arr 
+            bluno_3_collation_arr  = bluno_3_curr_compare_arr 
+            while(not isB1Complete): #or not isB2Complete or not isB3Complete):
+                data = collate_queue.get()
+                match data[1]:
+                    case "BLUNO_1":
+                        if len(bluno_1_collation_arr) < max_iter:
+                            bluno_1_collation_arr.append(data)
+                        else:
+                            isB1Complete = True
+                    case "BLUNO_2":
+                        if len(bluno_2_collation_arr) < max_iter:
+                            bluno_2_collation_arr.append(data)
+                        else:
+                            isB2Complete = True
+                    case "BLUNO_3":
+                        if len(bluno_3_collation_arr) < max_iter:
+                            bluno_3_collation_arr.append(data)
+                        else:
+                            isB3Complete = True
+            # send data to external comms
+            # pub_queue.put(
+            #     json.dumps(
+            #         {
+            #             "topic": "default",
+            #             "payload": json.dumps(
+            #                 {
+            #                     "player_id": 1,
+            #                     "action": "dummy",
+            #                     "data": 
+            #                         {
+            #                             "BLUNO_1": bluno_1_collation_arr,
+            #                             "BLUNO_2": bluno_2_collation_arr,
+            #                             "BLUNO 3": bluno_3_collation_arr,
+            #                         },
+            #                 }
+            #             ),
+            #         }
+            #     )
+            # )
+            # print(bluno_1_collation_arr) # test to print
             
-            # Store the results in a dictionary
-            stats.extend([mean, max_val, min_val, std, var, rms, skewness, kurt])
-            
-            ##print([mean, max_val, min_val, std, var, rms, skewness, kurt])
+            # write data collated into a csv
+            # print(f"bluno 2 coll arr: {bluno_2_collation_arr}")
+            csv_header_arr = ["time", "name", "Ax", "Ay", "Az", "Gx", "Gy", "Gz", "seq_num"]
+            bluno_1_df = pd.DataFrame(bluno_1_collation_arr)
+            bluno_1_df.to_csv(path_or_buf="../031024_output/bluno_1.csv", index=False, header=csv_header_arr)
+            bluno_2_df = pd.DataFrame(bluno_2_collation_arr)
+            bluno_2_df.to_csv(path_or_buf="../031024_output/bluno_2.csv", index=False, header=csv_header_arr)
+            bluno_3_df = pd.DataFrame(bluno_3_collation_arr)
+            bluno_3_df.to_csv(path_or_buf="../031024_output/bluno_3.csv", index=False, header=csv_header_arr)
 
-        return stats
+            # after collation is complete
+            # reset all arrays
+            bluno_1_collation_arr = []
+            bluno_2_collation_arr = []
+            bluno_3_collation_arr = []
+            bluno_1_prev_compare_arr = []
+            bluno_2_prev_compare_arr = []
+            bluno_3_prev_compare_arr = []
+            bluno_1_curr_compare_arr = []
+            bluno_2_curr_compare_arr = []
+            bluno_3_curr_compare_arr = []
+            # reset flags
+            isCollate = False
+            isB1Complete = False
+            isB2Complete = False
+            isB3Complete = False
+            print("collation complete")
+            isFullCycleComplete = True # set flag after one full iteration is complete and the data has been output -> prevent overwriting
 
-def isAboveThreshold(firstWindow,secondWindow):
-    ## i could probably improve efficiency by checking with threshold everytime a mean is calculated
-    ## Bluno 1
-    mean_ax_1 = abs(np.asarray(firstWindow.acc_x_1).mean()-np.asarray(secondWindow.acc_x_1).mean())
-    mean_ay_1 = abs(np.asarray(firstWindow.acc_y_1).mean()-np.asarray(secondWindow.acc_y_1).mean())
-    mean_az_1 = abs(np.asarray(firstWindow.acc_z_1).mean()-np.asarray(secondWindow.acc_z_1).mean())
-    mean_gx_1 = abs(np.asarray(firstWindow.gry_x_1).mean()-np.asarray(secondWindow.gry_x_1).mean())
-    mean_gy_1 = abs(np.asarray(firstWindow.gry_y_1).mean()-np.asarray(secondWindow.gry_y_1).mean())
-    mean_gz_1 = abs(np.asarray(firstWindow.gry_z_1).mean()-np.asarray(secondWindow.gry_z_1).mean())
-    ## Bluno 2
-    mean_ax_2 = abs(np.asarray(firstWindow.acc_x_2).mean()-np.asarray(secondWindow.acc_x_2).mean())
-    mean_ay_2 = abs(np.asarray(firstWindow.acc_y_2).mean()-np.asarray(secondWindow.acc_y_2).mean())
-    mean_az_2 = abs(np.asarray(firstWindow.acc_z_2).mean()-np.asarray(secondWindow.acc_z_2).mean())
-    mean_gx_2 = abs(np.asarray(firstWindow.gry_x_2).mean()-np.asarray(secondWindow.gry_x_2).mean())
-    mean_gy_2 = abs(np.asarray(firstWindow.gry_y_2).mean()-np.asarray(secondWindow.gry_y_2).mean())
-    mean_gz_2 = abs(np.asarray(firstWindow.gry_z_2).mean()-np.asarray(secondWindow.gry_z_2).mean())
-    ## Bluno 3
-    mean_ax_3 = abs(np.asarray(firstWindow.acc_x_3).mean()-np.asarray(secondWindow.acc_x_3).mean())
-    mean_ay_3 = abs(np.asarray(firstWindow.acc_y_3).mean()-np.asarray(secondWindow.acc_y_3).mean())
-    mean_az_3 = abs(np.asarray(firstWindow.acc_z_3).mean()-np.asarray(secondWindow.acc_z_3).mean())
-    mean_gx_3 = abs(np.asarray(firstWindow.gry_x_3).mean()-np.asarray(secondWindow.gry_x_3).mean())
-    mean_gy_3 = abs(np.asarray(firstWindow.gry_y_3).mean()-np.asarray(secondWindow.gry_y_3).mean())
-    mean_gz_3 = abs(np.asarray(firstWindow.gry_z_3).mean()-np.asarray(secondWindow.gry_z_3).mean())
+def isAboveThreshold(prev_arr, curr_arr):
+    FIXED_THRESHOLD = 10000
+    AX_INDEX = 2
+    AY_INDEX = 3
+    AZ_INDEX = 4
+    GX_INDEX = 5
+    GY_INDEX = 6
+    GZ_INDEX = 7
 
-    significantChange = max([mean_ax_1, mean_ay_1, mean_az_1, mean_gx_1, mean_gy_1, mean_gz_1, 
-                              mean_ax_2, mean_ay_2, mean_az_2, mean_gx_2, mean_gy_2, mean_gz_2,
-                              mean_ax_3, mean_ay_3, mean_az_3, mean_gx_3, mean_gy_3, mean_gz_3])
+    total_prev_Ax = 0
+    total_prev_Ay = 0
+    total_prev_Az = 0
+    total_prev_Gx = 0
+    total_prev_Gy = 0
+    total_prev_Gz = 0
+
+    # populate mean_prev_X
+    for data in prev_arr:
+        # print(f"mean_prev_x calculation: {data}")
+        total_prev_Ax += data[AX_INDEX]
+        total_prev_Ay += data[AY_INDEX]
+        total_prev_Az += data[AZ_INDEX]
+        total_prev_Gx += data[GX_INDEX]
+        total_prev_Gy += data[GY_INDEX]
+        total_prev_Gz += data[GZ_INDEX]
     
-    if (significantChange > threshold):
-        print(significantChange)
-        return True
-    return False
+    mean_prev_Ax = total_prev_Ax / 5
+    mean_prev_Ay = total_prev_Ay / 5
+    mean_prev_Az = total_prev_Az / 5
+    mean_prev_Gx = total_prev_Gx / 5
+    mean_prev_Gy = total_prev_Gy / 5
+    mean_prev_Gz = total_prev_Gz / 5
 
-def isMove(firstWindow, secondWindow):
-    detectedMove = isAboveThreshold(firstWindow, secondWindow)
-    print(detectedMove)
-    ## Assuming we only need the first second, and that would be 10 arrays
-    if detectedMove==True:
-        ## Get the 10 arrays
-        thirdWindow = halfSecondWindow()
-        thirdWindow.read_values(raw_data_3)
-        ## merge data
-        combinedWindow = halfSecondWindow()
-        combinedWindow.merge_values(secondWindow, thirdWindow)
-        ## Do feature extraction
-        ##print(combinedWindow.acc_x_1)
-        stats = combinedWindow.calculate_statistics()
-        print(len(stats))
-        ## Send to model
-        ## Get result back
+    total_curr_Ax = 0
+    total_curr_Ay = 0
+    total_curr_Az = 0
+    total_curr_Gx = 0
+    total_curr_Gy = 0
+    total_curr_Gz = 0
 
+    # populate mean_curr_X
+    for data in curr_arr:
+        # print(f"curr mean data: {data}")
+        total_curr_Ax += data[AX_INDEX]
+        total_curr_Ay += data[AY_INDEX]
+        total_curr_Az += data[AZ_INDEX]
+        total_curr_Gx += data[GX_INDEX]
+        total_curr_Gy += data[GY_INDEX]
+        total_curr_Gz += data[GZ_INDEX]
     
-firstWindow = halfSecondWindow()
-firstWindow.read_values(raw_data)
-secondWindow = halfSecondWindow()
-secondWindow.read_values(raw_data_2)
-preparedData = []
-preparedData.append(raw_data_2)
-##print(preparedData)
-##print(len(preparedData))
-isMove(firstWindow, secondWindow)
-##print(firstWindow.acc_x_2)
+    mean_curr_Ax = total_curr_Ax / 5
+    mean_curr_Ay = total_curr_Ay / 5
+    mean_curr_Az = total_curr_Az / 5
+    mean_curr_Gx = total_curr_Gx / 5
+    mean_curr_Gy = total_curr_Gy / 5
+    mean_curr_Gz = total_curr_Gz / 5
+    
+    # compare threshold
+    diff_Ax = abs(mean_curr_Ax-mean_prev_Ax)
+    diff_Ay = abs(mean_curr_Ay-mean_prev_Ay)
+    diff_Az = abs(mean_curr_Az-mean_prev_Az)
+    diff_Gx = abs(mean_curr_Gx-mean_prev_Gx)
+    diff_Gy = abs(mean_curr_Gy-mean_prev_Gy)
+    diff_Gz = abs(mean_curr_Gz-mean_prev_Gz)
+
+    # print(diff_Ax) # to remove
+
+    max_diff = max(diff_Ax, diff_Ay, diff_Az ,diff_Gx, diff_Gy, diff_Gz)
+
+    return max_diff > FIXED_THRESHOLD
