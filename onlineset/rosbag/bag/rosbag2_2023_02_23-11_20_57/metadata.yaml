@@ -1,0 +1,61 @@
+rosbag2_bagfile_information:
+  version: 4
+  storage_identifier: sqlite3
+  relative_file_paths:
+    - rosbag2_2023_02_23-11_20_57_0.db3
+  duration:
+    nanoseconds: 6835144878
+  starting_time:
+    nanoseconds_since_epoch: 1677151263520801508
+  message_count: 1744
+  topics_with_message_count:
+    - topic_metadata:
+        name: /Imu0/Raw
+        type: sensor_msgs/msg/Imu
+        serialization_format: cdr
+        offered_qos_profiles: ""
+      message_count: 218
+    - topic_metadata:
+        name: /Imu1/Raw
+        type: sensor_msgs/msg/Imu
+        serialization_format: cdr
+        offered_qos_profiles: ""
+      message_count: 218
+    - topic_metadata:
+        name: /tf_static
+        type: tf2_msgs/msg/TFMessage
+        serialization_format: cdr
+        offered_qos_profiles: ""
+      message_count: 0
+    - topic_metadata:
+        name: /tf
+        type: tf2_msgs/msg/TFMessage
+        serialization_format: cdr
+        offered_qos_profiles: ""
+      message_count: 436
+    - topic_metadata:
+        name: /Imu2/Raw
+        type: sensor_msgs/msg/Imu
+        serialization_format: cdr
+        offered_qos_profiles: ""
+      message_count: 218
+    - topic_metadata:
+        name: /Imu2
+        type: sensor_msgs/msg/Imu
+        serialization_format: cdr
+        offered_qos_profiles: ""
+      message_count: 218
+    - topic_metadata:
+        name: /Imu1
+        type: sensor_msgs/msg/Imu
+        serialization_format: cdr
+        offered_qos_profiles: ""
+      message_count: 218
+    - topic_metadata:
+        name: /Imu0
+        type: sensor_msgs/msg/Imu
+        serialization_format: cdr
+        offered_qos_profiles: ""
+      message_count: 218
+  compression_format: ""
+  compression_mode: ""

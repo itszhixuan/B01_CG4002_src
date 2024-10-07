@@ -1,0 +1,12 @@
+Brief
+The glove is equipped with three IMUs, and each gesture was recorded for approximately 3 seconds. The recorded data includes the linear acceleration and angular velocity in the XYZ directions, as well as the orientation in the XYZW dimensions. Moreover, the TFs between the index finger, middle finger, and palm have been captured.
+
+The definition of each gesture
+STATIC = 0
+SLIDE_UP = 1
+SLIDE_DOWN = 2
+SLIDE_LEFT = 3
+SLIDE_RIGHT = 4
+RELEASE = 5
+GRASP = 6
+NONE = 10 
