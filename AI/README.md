@@ -1,4 +1,4 @@
-# capstoneAI
+# HW/SW AI
 
 Houses the code used for entire AI process from HW to SW, across 13 weeks of CG4002 capstone project. Project aims to predict certain moves based on list of actions, where the user will execute the moves in real time. IMUs are strapped on the player's right hand and leg, and data is sent to the Ultra96 FPGA through internal and external communications(not covered in this repo). When the data is received by the python script with PYNQ overlay, an output is predicted by the IP block generated from vivado (in the form of bitstream) and returned to the external comms, for further dissemination to the visualiser and back to internal communications. A temperature scaling confidence level scheme was attempted to filter out noise and unsure predictions based on the data sent from the player. Everything runs on the Programming Logic (PL) on the Ultra96, and communication is done using AXI DMA.
 
