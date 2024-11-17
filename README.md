@@ -4,3 +4,4 @@ For specific information on each code portion, refer to the READMEs in each indi
 
 - AI: Artificial Intelligence
 - EC: External Communications
+- IC: Internal Communications
